@@ -1,0 +1,95 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2712
+
+now this plugin supports Windows though cmd.exe shows up at front most...
+http://tyru.yu-nagi.com/stash/screencast_vim_sign-diff.swf
+
+diff program for windows here:
+  http://gnuwin32.sourceforge.net/packages/diffutils.htm
+  http://www.gfd-dennou.org/library/cc-env/diff-win/SIGEN.htm
+or see cygwin, mingw.
+
+
+Usage:
+  Commands:
+      SDAdd
+          add current file to diff list.
+          current buffer will be diffed with
+          the written file's buffer.
+          if you want to change that, see g:SD_comp_with.
+      SDUpdate
+          update signs.
+      SDEnable
+          start showing signs.
+      SDDisable
+          stop showing signs.
+      SDToggle
+          toggle showing signs.
+      SDList
+          list all signs in current file
+
+
+  Global Variables:
+      g:SD_backupdir (default:'~/.vim-sign-diff')
+          backup directory to save some backup of current file.
+          this dir will be mkdir-ed if doesn't exist.
+
+      g:SD_diffopt (default:&diffopt)
+          script local value of &diffopt.
+
+      g:SD_diffexpr (default:&diffexpr)
+          script local value of &diffopt.
+
+      g:SD_hl_diffadd (default:'DiffAdd')
+          highlight group of the added line(s).
+
+      g:SD_hl_diffchange (default:'DiffChange')
+          highlight group of the changed line(s).
+
+      g:SD_hl_diffdelete (default:'DiffDelete')
+          highlight group of the deleted line(s).
+
+      g:SD_hl_difftext (default:'DiffText')
+          highlight group of the one changed line.
+
+      g:SD_sign_add (default:'+')
+          sign of the added line(s).
+
+      g:SD_sign_change (default:'*')
+          sign of the changed line(s).
+
+      g:SD_sign_delete (default:'-')
+          sign of the changed line(s).
+
+      g:SD_sign_text (default:'@')
+          sign of the one changed line.
+          see :help hl-DiffText
+
+      g:SD_comp_with (default:['written', 'buffer'])
+          g:SD_comp_with is List of two items.
+          valid items are 'buffer'(same as 1), 'written',
+          or number of revisions to revert.
+          get diff output like the following.
+          (if this value is default)
+          $ diff written buffer > output
+
+      g:SD_autocmd_add (default:['BufReadPost'])
+          do autocmd for adding signs with these group
+
+      g:SD_autocmd_update (default:['CursorHold', 'InsertLeave'])
+          do autocmd for updating signs with these group
+
+      g:SD_delete_files_vimleave (default:1)
+          when starting VimLeave event,
+          delete all files under g:SD_backupdir.
+
+      g:SD_no_update_within_seconds (default:3)
+          won't update within this seconds.
+          0 to update each autocmd.
+          see g:SD_autocmd_add and g:SD_autocmd_update
+          about timing to throw event.
+
+
+  Tips:
+      I suggest the following map.
+          nnoremap <C-l>  :SDUpdate<CR><C-l>
+
