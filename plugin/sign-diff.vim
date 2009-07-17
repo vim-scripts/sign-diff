@@ -4,9 +4,11 @@ scriptencoding utf-8
 " Document {{{
 "==================================================
 " Name: sign-diff
-" Version: 0.0.0
+" Version: 0.0.2
 " Author:  tyru <tyru.exe+vim@gmail.com>
-" Last Change: 2009-07-16.
+" Last Change: 2009-07-17.
+"
+" GetLatestVimScripts: 2712 1 :AutoInstall: sign-diff
 "
 " Description:
 "   show the diff status at left sidebar
@@ -17,6 +19,13 @@ scriptencoding utf-8
 "   - strict check the global options.
 "   - no new files are created when g:SD_comp_with is default value.
 "   - fix some bugs.
+"   0.0.2:
+"   - supports GetLatestVimScripts
+"   - supports Windows (but cmd.exe shows up at front most...)
+"   - fix the bug that the changed lines are highlighted as the added lines...
+"   - supports difftext(the one changed line). if you wish to let this plugin
+"   behave same as previous version, put "let g:SD_sign_text = '*'" and
+"   "let g:SD_hl_difftext = 'DiffAdd'" into your .vimrc
 " }}}
 " Usage: {{{
 "   Commands: {{{
@@ -54,11 +63,24 @@ scriptencoding utf-8
 "       g:SD_hl_diffchange (default:'DiffChange')
 "           highlight group of the changed line(s).
 "
+"       g:SD_hl_diffdelete (default:'DiffDelete')
+"           highlight group of the deleted line(s).
+"
+"       g:SD_hl_difftext (default:'DiffText')
+"           highlight group of the one changed line.
+"
 "       g:SD_sign_add (default:'+')
-"           sign of the added line.
+"           sign of the added line(s).
 "
 "       g:SD_sign_change (default:'*')
-"           sign of the changed line.
+"           sign of the changed line(s).
+"
+"       g:SD_sign_delete (default:'-')
+"           sign of the changed line(s).
+"
+"       g:SD_sign_text (default:'@')
+"           sign of the one changed line.
+"           see :help hl-DiffText
 "
 "       g:SD_comp_with (default:['written', 'buffer'])
 "           g:SD_comp_with is List of two items.
@@ -93,16 +115,9 @@ scriptencoding utf-8
 "   TODO: {{{
 "       - SDDiffThis, SDDiffPatch, etc...
 "       - show diff also ordinary style (:diff*)
-"       - if the global variable is enabled,
-"       have only two files to be diffed for full HDD.
-"       (have patch data as hidden buffer?)
-"       - support for Windows
-"       (diff program won't create output file...)
 "       - jumping to the added/changed/deleted line.
 "       this may be easy to implemenet.
-"       but can't decide the interface...
-"       - update signs at only changed lines
-"       (now clear all signs and re-sign all)
+"       but can't decide the interface...(quickfix?)
 "       - update signs when undo?
 "       - save only patches,
 "       do not write whole current buffer
@@ -172,7 +187,7 @@ endif
 if !exists('g:SD_hl_diffdelete')
     let g:SD_hl_diffdelete = "DiffDelete"
 endif
-if !exists('g:SD_hl_difftext')    " TODO
+if !exists('g:SD_hl_difftext')
     let g:SD_hl_difftext = "DiffText"
 endif
 if !exists('g:SD_sign_add')
@@ -183,6 +198,9 @@ if !exists('g:SD_sign_change')
 endif
 if !exists('g:SD_sign_delete')
     let g:SD_sign_delete = '-'
+endif
+if !exists('g:SD_sign_text')
+    let g:SD_sign_text = '@'
 endif
 if !exists('g:SD_comp_with')
     let g:SD_comp_with = s:def_comp_with
@@ -201,7 +219,7 @@ endif
 if !exists('g:SD_show_signs_always')    " TODO
     let g:SD_show_signs_always = 0
 endif
-if !exists('g:SD_no_update_within_seconds')    " TODO
+if !exists('g:SD_no_update_within_seconds')
     let g:SD_no_update_within_seconds = 3
 endif
 " }}}
@@ -385,7 +403,9 @@ func! s:mkdir(path, ...)
         call s:apply('mkdir', [a:path] + a:000)
     elseif executable('mkdir')
         let opt = a:0 == 0 ? '' : '-'.a:1
-        call system(printf('mkdir %s %s', opt, a:path))
+        let cmd = printf('mkdir %s %s',
+                        \ shellescape(opt), shellescape(a:path))
+        call system(cmd)
     endif
 endfunc
 " }}}
@@ -421,19 +441,24 @@ func! s:init()
     " signs
     let defs = [
         \ {
-            \ 'name' : 'SD_group_add',
+            \ 'name'   : 'SD_group_add',
             \ 'texthl' : g:SD_hl_diffadd,
-            \ 'text' : g:SD_sign_add
+            \ 'text'   : g:SD_sign_add
         \ },
         \ {
-            \ 'name' : 'SD_group_change',
+            \ 'name'   : 'SD_group_change',
             \ 'texthl' : g:SD_hl_diffchange,
-            \ 'text' : g:SD_sign_change
+            \ 'text'   : g:SD_sign_change
         \ },
         \ {
-            \ 'name' : 'SD_group_delete',
+            \ 'name'   : 'SD_group_delete',
             \ 'texthl' : g:SD_hl_diffdelete,
-            \ 'text' : g:SD_sign_delete
+            \ 'text'   : g:SD_sign_delete
+        \ },
+        \ {
+            \ 'name'   : 'SD_group_text',
+            \ 'texthl' : g:SD_hl_difftext,
+            \ 'text'   : g:SD_sign_text
         \ }
     \ ]
     for i in defs
@@ -648,7 +673,8 @@ func! s:update_diff_signs(filename)
         let opt = {
             \ '&diffexpr'   : g:SD_diffexpr,
             \ '&diffopt'    : g:SD_diffopt,
-            \ '&shellslash' : 0
+            \ '&shellslash' : 0,
+            \ '&shellquote' : ''
         \ }
         let is_expr = 1
 
@@ -672,6 +698,7 @@ func! s:update_diff_signs(filename)
                     let msg .= " but output file was not created due to broken pipe."
                 endif
                 call s:warn(msg)
+                call s:debugmsg('output_file:'.output_file)
             endif
             throw 'clear_signs'
         endif
@@ -776,9 +803,9 @@ func! s:do_diff_two_files(orig, new, output)
 
         let args = [join(opt, ' '), a:orig, a:new, a:output]
         let exec = s:apply('printf',
-                    \ ['diff %s %s %s > %s'] +
+                    \ ['silent !diff %s %s %s > %s'] +
                     \ map(args, 'v:val == "" ? "" : shellescape(v:val)'))
-        call system(exec)
+        execute exec
         return 1
     else
         " TODO
@@ -831,12 +858,12 @@ func! s:make_signs(filename, lines)
             let to   = e[1] == '' ? e[0] : e[1]
 
         elseif mode ==# 'c'
-            " TODO difftext
-            " if len(e) == 1
-            " endif
-            let hl_name = 'SD_group_add'
+            let hl_name = 'SD_group_change'
             let from = e[0]
             let to   = e[1] == '' ? e[0] : e[1]
+            if from == to
+                let hl_name = 'SD_group_text'
+            endif
 
         elseif mode ==# 'd'
             let hl_name = 'SD_group_delete'
