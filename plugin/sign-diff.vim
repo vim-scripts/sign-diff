@@ -4,9 +4,9 @@ scriptencoding utf-8
 " Document {{{
 "==================================================
 " Name: sign-diff
-" Version: 0.0.2
+" Version: 0.0.3
 " Author:  tyru <tyru.exe+vim@gmail.com>
-" Last Change: 2009-07-17.
+" Last Change: 2009-07-26.
 "
 " GetLatestVimScripts: 2712 1 :AutoInstall: sign-diff
 "
@@ -26,6 +26,9 @@ scriptencoding utf-8
 "   - supports difftext(the one changed line). if you wish to let this plugin
 "   behave same as previous version, put "let g:SD_sign_text = '*'" and
 "   "let g:SD_hl_difftext = 'DiffAdd'" into your .vimrc
+"   0.0.3:
+"   - fix warning of SDEnable. sorry.
+"   - add g:SD_disable.
 " }}}
 " Usage: {{{
 "   Commands: {{{
@@ -47,6 +50,9 @@ scriptencoding utf-8
 "   }}}
 "
 "   Global Variables: {{{
+"       g:SD_disable (default:0)
+"           if true, SDDisable when start up.
+"
 "       g:SD_backupdir (default:'~/.vim-sign-diff')
 "           backup directory to save some backup of current file.
 "           this dir will be mkdir-ed if doesn't exist.
@@ -169,6 +175,9 @@ if !exists('g:SD_debug')
     let g:SD_debug = 0
 endif
 
+if !exists('g:SD_disable')
+    let g:SD_disable = 0
+endif
 if !exists('g:SD_backupdir')
     let g:SD_backupdir = '~/.vim-sign-diff'
 endif
@@ -506,6 +515,10 @@ func! s:init()
                 let g:SD_comp_with = s:def_comp_with
             endif
         endfor
+    endif
+
+    if g:SD_disable
+        SDDisable
     endif
 endfunc
 " }}}
@@ -958,7 +971,7 @@ command! SDAdd
 command! SDUpdate
             \ call s:update_diff_signs(expand('%'))
 command! SDEnable
-            \ call s:update_diff_signs(expand('%'))
+            \ call s:update_diff_signs(expand('%')) |
             \ let s:enabled = 1
 command! SDDisable
             \ call s:clear_signs(expand('%')) |
